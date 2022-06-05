@@ -32,9 +32,6 @@ class NoteDetection:
         sounddevice.wait()
 
         return rec
-        # print(rec)
-        # write(self.output, self.samplerate, rec)
-        # print(f"Record saved to {self.output}")
 
     def play(self, rec):
         print(f"Playing...")
@@ -52,7 +49,7 @@ class NoteDetection:
 
         try:
             corr = fftconvolve(rec, rec[::-1], mode="full")
-            corr = corr[len(corr) / 2 :]
+            corr = corr[int(len(corr) / 2) :]
             d = numpy.diff(corr)
             start = NoteDetection.find(d > 0)[0]
             peak = numpy.argmax(corr[start:]) + start
@@ -71,8 +68,8 @@ if __name__ == "__main__":
     while True:
         rec = nd.record(seconds=0.5)
         signal_level = nd.loudness(rec)
-        # print(signal_level)
+        inputnote = nd.note(rec)
 
-        inputnote = round(nd.note(rec), 2)
-        # print(inputnote)
-        # nd.play(rec)
+        print(f"signal_level: {signal_level} - inputnote: {inputnote}")
+
+        nd.play(rec)

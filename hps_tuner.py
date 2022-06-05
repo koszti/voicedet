@@ -17,7 +17,8 @@ SAMPLE_FREQ = 48000  # sample frequency in Hz
 WINDOW_SIZE = 48000  # window size of the DFT in samples
 WINDOW_STEP = 12000  # step size of window
 NUM_HPS = 5  # max number of harmonic product spectrums
-POWER_THRESH = 1e-6  # tuning is activated if the signal power exceeds this threshold
+POWER_THRESH = 10e-6  # tuning is activated if the signal power exceeds this threshold
+FREQ_THRESH = 500  #
 CONCERT_PITCH = 440  # defining a1
 WHITE_NOISE_THRESH = 0.2  # everything under WHITE_NOISE_THRESH*avg_energy_per_freq is cut off
 
@@ -27,6 +28,8 @@ DELTA_FREQ = SAMPLE_FREQ / WINDOW_SIZE  # frequency step width of the interpolat
 OCTAVE_BANDS = [50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600]
 
 ALL_NOTES = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
+
+SECRET_NOTES = ["C3", "E3", "C3", "E3", "G3"]
 
 
 def find_closest_note(pitch):
@@ -45,6 +48,8 @@ def find_closest_note(pitch):
 
 
 HANN_WINDOW = np.hanning(WINDOW_SIZE)
+
+played_notes = []
 
 
 def callback(indata, frames, time, status):
@@ -68,8 +73,6 @@ def callback(indata, frames, time, status):
         # skip if signal power is too low
         signal_power = (np.linalg.norm(callback.window_samples, ord=2, axis=0) ** 2) / len(callback.window_samples)
         if signal_power < POWER_THRESH:
-            os.system("cls" if os.name == "nt" else "clear")
-            print("Closest note: ...")
             return
 
         # avoid spectral leakage by multiplying the signal with a hann window
@@ -122,11 +125,23 @@ def callback(indata, frames, time, status):
         callback.noteBuffer.insert(0, closest_note)  # note that this is a ringbuffer
         callback.noteBuffer.pop()
 
-        os.system("cls" if os.name == "nt" else "clear")
         if callback.noteBuffer.count(callback.noteBuffer[0]) == len(callback.noteBuffer):
-            print(f"Closest note: {closest_note} {max_freq}/{closest_pitch}")
-        else:
-            print(f"Closest note: ...")
+            # skip if max freq is too low
+            if max_freq < FREQ_THRESH:
+                return
+
+            print(f"Closest note: {closest_note} {max_freq}/{closest_pitch} - {signal_power}")
+
+            # if not played_notes or played_notes[-1] != closest_note:
+            # print(f"Closest note: {closest_note} {max_freq}/{closest_pitch} - {signal_power}")
+            # played_notes.append(closest_note)
+            # if len(played_notes) > 10:
+            #     played_notes.pop(0)
+
+            # if len(played_notes) >= len(SECRET_NOTES):
+            #     if played_notes[len(SECRET_NOTES) * -1 :] == SECRET_NOTES:
+            #         print(">>>> AJTO KINYIT <<<<")
+            # print(played_notes)
 
     else:
         print("no input")
@@ -136,6 +151,6 @@ try:
     print("Starting HPS guitar tuner...")
     with sd.InputStream(channels=1, callback=callback, blocksize=WINDOW_STEP, samplerate=SAMPLE_FREQ):
         while True:
-            time.sleep(0.5)
+            time.sleep(0.05)
 except Exception as exc:
     print(str(exc))
